@@ -1,0 +1,129 @@
+---
+- name: Initialize an empty list
+  set_fact:
+    jobID: []
+    fileNames: []
+    vmName: ""
+    vmIPDetails: {}
+    returnValue: {}
+    returnValueList: []
+    startCount: ""
+    endCount: ""
+    vmList: []
+
+- name: Ansible check directory
+  stat:
+    path: "{{ outDir }}"
+  register: my_folder
+- name: Create the empty k8s_outfiles directory
+  file:
+    path: "{{ outDir }}"
+    state: directory
+  when: my_folder.stat.exists == false
+
+- name: Delete file if it exists
+  file:
+    path: "{{ outDir }}/vmDetails_{{ clusterName }}.yml"
+    state: absent
+  ignore_errors: yes
+- name: Create new empty file 
+  file:
+    path: "{{ outDir }}/vmDetails_{{ clusterName }}.yml"
+    state: touch
+- name: Create Virtual Network
+  import_tasks: create_virtualNetwork.yml
+- name: Create subnet
+  import_tasks: create_subnet.yml
+- name: Check and get count of virtual machines if exists
+  import_tasks: get_virtualMachineCount.yml
+  vars:
+    vmType: "Master"
+    count: "{{ masterCount }}"
+- name: Add server names to list
+  set_fact:
+    vmList: "{{ vmList + [item] }}"
+  loop: "{{ vmNames }}"
+  when: (vmNames|length) != 0
+- name: Create Master Virtual Machine
+  import_tasks: create_virtualMachine.yml
+  vars:
+    osType: "{{ imageName }}"
+    machineType: "m"
+    vmSize: "{{ masterSize }}"
+    type: "Master"
+    ports: "{{ masterPorts }}"
+- name: Store Job ID and Job file names
+  set_fact:
+    jobID: "{{ jobID  + [ item.ansible_job_id ] }}"
+    fileNames: "{{ fileNames + [item.results_file] }}"
+  loop: "{{ vm.results }}"
+- name: Check and get count of virtual machines if exists
+  import_tasks: get_virtualMachineCount.yml
+  vars:
+    vmType: "Worker"
+    count: "{{ nodeCount }}"
+- name: Add server names to list
+  set_fact:
+    vmList: "{{ vmList + [item] }}"
+  loop: "{{ vmNames }}"
+  when: (vmNames|length) != 0
+- name: Create Node Virtual Machine
+  import_tasks: create_virtualMachine.yml
+  vars:
+    osType: "{{ imageName }}"
+    machineType: "w"
+    vmSize: "{{ nodeSize }}"
+    type: "Worker"
+    ports: "{{  nodePorts }}"
+- name: Store Job ID and Job file names
+  set_fact:
+    jobID: "{{ jobID  + [ item.ansible_job_id ] }}"
+    fileNames: "{{ fileNames + [item.results_file] }}"
+  loop: "{{ vm.results }}"
+- name: Print jobID
+  debug: var=jobID
+- name: Print Job file names
+  debug: var=fileNames
+- name: Write initial constant information to retun value
+  set_fact:
+    returnValue: "{{ returnValue | combine({ 'clusterID': clusterID }) }}"
+- name: Get Public and Private IP Details
+  include_tasks: get_virtualMachineIPDetails.yml
+  loop: "{{ fileNames }}"
+- name: Collect Virtual Machine details into list
+  set_fact:
+    returnValueList: "{{ returnValueList + [item.value] }}"
+  loop: "{{ lookup('dict', vmIPDetails ) }}"
+- name: Write Virtual Machine details to return value
+  set_fact:
+    returnValue: "{{ returnValue | combine({ 'provisionDetails': returnValueList}) }}"
+- name: Print return value
+  debug: var=returnValue
+- name: Print JSON return value
+  debug: 
+    msg: "{{ returnValue | to_json(indent=0) | regex_replace('\n\"','\n\"')}}"
+- name: Copy return value to JSON file
+  copy: 
+    content: "{{ returnValue | to_json(indent=0) | regex_replace('\n\"','\n\"')}}" 
+    dest: "{{ outDir }}/vmDetails_{{ clusterName }}.json"
+- name: Check the status of callback API
+  uri:
+    url: "{{ callbackUrl }}"
+    timeout: 5
+  register: apiStatus
+  ignore_errors: yes
+- name: Call API using uri module
+  uri:
+    url: "{{ callbackUrl }}"
+    body: "{{ lookup('file', '{{outDir}}/vmDetails_{{ clusterName }}.json' ) }}"
+    method: POST
+    body_format: json
+  when: callbackUrl is defined and apiStatus.status != -1
+  register: apiCall
+- name: Print response from API call
+  debug: var=apiCall
+  when: apiStatus.status != -1
+- name: Print Message if callback API is down
+  debug:
+    msg: "The URL: {{ callbackUrl }} is down.  Cluster creation has to be done manually"
+  when: apiStatus.status == -1

@@ -1,0 +1,56 @@
+---
+- name: Fetching prometheus-server cluster ip
+  shell: |
+    kubectl get services -n monitoring --field-selector metadata.name=prometheus-server | tail -n +2 | tr -s " " |  cut -d " " -f3
+  register: prometheusIP_raw
+- name: set prometheusIP value to a variable
+  set_fact:
+    prometheusIP: "{{ prometheusIP_raw.stdout_lines[0] }}"
+- name: Print prometheusIP value
+  debug: var=prometheusIP
+
+- name: Copy custom_values file for grafana
+  template:
+    src: custom_values.j2
+    dest: "{{role_path}}/files/custom_values.yml"
+- name: Add Custom dashboard JSON to the custom_values file
+  shell: |
+    sed -e 's/^/        /' {{role_path}}/files/IK8MP_Grafana_custom_dashboard.json >> {{role_path}}/files/custom_values.yml
+
+- name: Install Grafana with custom values
+  shell: |
+    helm install grafana stable/grafana --namespace monitoring -f {{role_path}}/files/custom_values.yml --version={{ grafanaChartVersion }}
+  register: grafanaInstallLog
+- name: Print grafana installation value
+  debug: var=grafanaInstallLog
+
+- name: Fetching Grafana password
+  shell: |
+    kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+  register: grafanaPassword_raw
+- name: set grafanaPassword value to a variable
+  set_fact:
+    grafanaPassword: "{{ grafanaPassword_raw.stdout_lines[0] }}"
+
+- name: Update grafana service to LoadBalancer and fetch the ip address
+  shell: |
+    kubectl -n monitoring patch service grafana -p '{"spec":{"type":"LoadBalancer"}}'
+    kubectl get services -n monitoring --field-selector metadata.name=grafana | tail -n +2 | tr -s " " |  cut -d " " -f4
+  register: grafanaIP_raw
+  until: grafanaIP_raw.stdout_lines[1] is regex("^(?=\d+\.\d+\.\d+\.\d+$)")
+  retries: 50
+  delay: 10
+  ignore_errors: yes
+- name: set Grafana ip value to a variable
+  set_fact:
+    grafanaIP: "{{ grafanaIP_raw.stdout_lines[1] }}"
+- name: Print grafanaIP value
+  debug: var=grafanaIP
+
+- name: Write cluster details to vault
+  hashivault_write:
+    mount_point: "pg"
+    secret: "{{ clusterID }}_grafanaKey"
+    data:
+      grafanaUser: "admin"
+      grafanaPassword: "{{ grafanaPassword }}"

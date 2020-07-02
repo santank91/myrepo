@@ -1,0 +1,34 @@
+---
+- name: Initialize empty string
+  set_fact:
+    serverState: "New"
+- name: Print file name
+  debug: var=item
+- name: Wait until the string "ansible_facts" is in the output file before continuing
+  wait_for:
+    path: "{{ item }}"
+    search_regex: "ansible_facts"
+    delay: 5
+    timeout: 720
+- name: Get Virtual Machine name
+  vars:
+    contents: "{{lookup('file', item) }}"
+  set_fact:
+    vmName: "{{ contents.ansible_facts.azure_vm.name }}"
+  register: vmName
+- name: Check if vmName is existing or new server
+  set_fact:
+    serverState: "Existing"
+  when: vmName in vmList
+- name: Store details of Virtual Machine into a Dictionary
+  vars:
+    contents: "{{lookup('file', item) }}"
+    vmName: "master"
+  set_fact:
+    vmIPDetails: "{{ vmIPDetails | combine({ vmName : {'vmName': vmName, 'privateIP': contents.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress, 'publicIP': contents.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.publicIPAddress.properties.ipAddress, 'iK8MPClusterName': contents.ansible_facts.azure_vm.tags.iK8MPClusterName, 'iK8MPNodeType': contents.ansible_facts.azure_vm.tags.iK8MPNodeType, 'iK8MPNodeName': contents.ansible_facts.azure_vm.tags.iK8MPNodeName, 'nodeName': contents.ansible_facts.azure_vm.tags.nodeName, 'nodeType': contents.ansible_facts.azure_vm.tags.nodeType, 'status': serverState}}) }}"
+- name: Write details of Virtual Machine into a file
+  vars:
+    contents: "{{lookup('file', item) }}"
+  lineinfile:
+    path: "{{ outDir }}/vmDetails_{{ clusterName }}.yml"
+    line: "{{contents.ansible_facts.azure_vm.name}} -  {{contents.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress}}, {{contents.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.publicIPAddress.properties.ipAddress}},{{contents.ansible_facts.azure_vm.tags.iK8MPClusterName}},{{contents.ansible_facts.azure_vm.tags.iK8MPNodeType}},{{contents.ansible_facts.azure_vm.tags.iK8MPNodeName}},{{contents.ansible_facts.azure_vm.tags.nodeName}},{{contents.ansible_facts.azure_vm.tags.nodeType}}, {{ serverState }}"

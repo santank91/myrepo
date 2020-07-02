@@ -1,0 +1,6 @@
+---
+- name: printing join
+  debug: msg="{{ hostvars['K8S_TOKEN_HOLDER']['token'] }}"
+
+- name: join cluster
+  shell: "{{ hostvars['K8S_TOKEN_HOLDER']['token'] }}"

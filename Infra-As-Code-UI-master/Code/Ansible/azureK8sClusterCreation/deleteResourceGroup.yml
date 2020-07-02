@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check required variables if defined
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when: item not in vars
+      with_items: 
+        - "{{extraVarsRequiredDelete}}"
+    - name: Check if variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item.value|length) == 0
+      loop: "{{ lookup('dict', extraValuesRequiredDelete ) }}"
+    - name: Check if list variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item|length) == 0
+      loop: "{{ extraVarsListDelete }}"
+- name: Configure Azure details
+  hosts: localhost
+  vars:
+    saveAZdetails: "NO"
+  roles:
+    - set_credentials
+- name: Delete ResourceGroup
+  hosts: localhost
+  environment:
+    AZURE_SUBSCRIPTION_ID: "{{ azureSubscriptionID }}"
+    AZURE_CLIENT_ID: "{{ azureClientID }}"
+    AZURE_SECRET: "{{ azureSecret }}"
+    AZURE_TENANT: "{{ azureTenant }}"
+  roles:
+    - forceDeleteResourceGroup
+
+

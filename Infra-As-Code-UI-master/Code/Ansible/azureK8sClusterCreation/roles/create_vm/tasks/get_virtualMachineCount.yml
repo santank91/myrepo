@@ -1,0 +1,53 @@
+---
+- name: Initialize an empty list
+  set_fact:
+    vmNames: []
+    actualStartCount: 1
+    tagValueList: []
+- name: Get information about resource group
+  azure_rm_resourcegroup_info:
+    name: "rg{{ clusterName }}"
+    list_resources: yes
+  register: output
+- name: Number of resources
+  set_fact:
+    ResourceLength: "{{ output.resourcegroups[0].resources|length }}"
+- debug:
+    var: ResourceLength
+- name: Filter resources of type virtual machine
+  set_fact:
+    vmNames: "{{ vmNames }} + [ '{{ item.name }}' ]"
+  loop: "{{ output.resourcegroups[0].resources }}"
+  when: item.type == "Microsoft.Compute/virtualMachines" and item.tags.nodeType == "{{ vmType }}"
+- name: Print names
+  debug: var=vmNames
+- name: Print node count
+  debug:
+    msg: "{{  (vmNames|length)+(count|int) }}"
+  when: vmNames|length != 0
+- name: Assign Actual Start Count value
+  set_fact:
+    actualStartCount:  "{{ (vmNames|length)+1 }}"
+  when: vmNames|length != 0
+- debug: var=actualStartCount
+  when: actualStartCount|int > 1
+- name: Assign start and end count values
+  set_fact:
+    startCount: 1 
+    endCount: "{{  (vmNames|length)+(count|int) }}"
+- name: Assign tag entries to list
+  set_fact:
+    tagValueList: "{{ tagValueList + ['New'] }}"
+  with_sequence: start={{ startCount|int }} end={{ endCount|int }}
+  when: (actualStartCount|int) == 1
+- name: Assign tag entries to list
+  set_fact:
+    tagValueList: "{{ tagValueList + ['Existing'] }}"
+  with_sequence: start={{ startCount|int }} end={{ (actualStartCount|int -1) if actualStartCount|int > 1 else 1 }}
+  when: actualStartCount != 1
+- name: Assign tag entries to list
+  set_fact:
+    tagValueList: "{{ tagValueList + ['New'] }}"
+  with_sequence: start={{ actualStartCount|int  }} end={{ endCount|int if endCount|int > actualStartCount|int else actualStartCount|int }}
+  when: actualStartCount != 1 and count|int != 0
+- debug: var=tagValueList

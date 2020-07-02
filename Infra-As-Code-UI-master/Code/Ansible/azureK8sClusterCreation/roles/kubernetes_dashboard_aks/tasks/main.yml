@@ -1,0 +1,45 @@
+---
+- name: Change Service type from ClusterIP to LoadBalancer to expose dashboard
+  command: kubectl -n kube-system patch service kubernetes-dashboard -p '{"spec":{"type":"LoadBalancer"}}'
+
+- name: Create secret in specific namespace
+  shell: |
+    kubectl delete secret kubernetes-dashboard-certs --namespace=kube-system
+    kubectl create secret generic kubernetes-dashboard-certs --from-file={{role_path}}/certs -n kube-system
+  register: secretOuput
+- name: Print create secret output
+  debug: var=secretOuput
+
+- name: Update dashboard deployment file to use custom certificates
+  shell: |
+    kubectl -n kube-system patch deployment kubernetes-dashboard -p '{"spec":{"template":{"spec":{"containers":[{"args":["--tls-cert-file=/dashboard.crt","--tls-key-file=/dashboard.key","--namespace=kube-system"],"name": "kubernetes-dashboard"}]}}}}'
+  register: patchOutput
+- name: Print patch output
+  debug: var=patchOutput
+
+- name: Creating service account and fetching token for dashboard access
+  shell: |
+    kubectl create serviceaccount {{readonlyUser}}
+    kubectl create clusterrolebinding {{readonlyUser}}-binding --clusterrole=view --serviceaccount=default:{{readonlyUser}}
+    TokenName=`kubectl get serviceaccount/{{readonlyUser}} -o jsonpath='{.secrets[0].name}'`
+    Token=$(kubectl get secret $TokenName -o=jsonpath="{.data.token}" | base64 -d -i -)
+    echo $Token
+  register: kubeToken_raw
+- name: set token value to variable
+  set_fact:
+    kubeToken: "{{ kubeToken_raw.stdout_lines[2] }}"
+
+- name: Fetching dashboard URL and Port after waiting to get external ip created
+  shell: |
+    kubectl get services -n kube-system --field-selector metadata.name=kubernetes-dashboard | tail -n +2 | tr -s " " |  cut -d " " -f4
+    kubectl get services -n kube-system --field-selector metadata.name=kubernetes-dashboard | tail -n +2 | tr -s " " |  cut -d " " -f5 | cut -d ":" -f1
+  register: dashboardUrl_raw
+  until: dashboardUrl_raw.stdout_lines[0] is regex("^(?=\d+\.\d+\.\d+\.\d+$)")
+  retries: 50
+  delay: 10
+  ignore_errors: yes
+- name: set dashboard URL value to a variable
+  set_fact:
+    dashboardUrl: "https://{{ dashboardUrl_raw.stdout_lines[0] }}:{{ dashboardUrl_raw.stdout_lines[1] }}"
+- name: Print dashboard URL
+  debug: var=dashboardUrl

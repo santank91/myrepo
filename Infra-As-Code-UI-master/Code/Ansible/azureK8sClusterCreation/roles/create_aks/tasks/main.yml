@@ -1,0 +1,46 @@
+---
+- name: Ansible check directory
+  stat:
+    path: "{{ outDir }}"
+  register: my_folder
+- name: Create the empty k8s_outfiles directory
+  file:
+    path: "{{ outDir }}"
+    state: directory
+  when: my_folder.stat.exists == false
+- name: Create a managed Azure Container Services (AKS) cluster
+  azure_rm_aks:
+    name: "{{ clusterName }}"
+    location: "{{ availZone }}"
+    resource_group: "rg{{ clusterName }}"
+    dns_prefix: "{{ clusterName }}"
+    enable_rbac: yes
+    kubernetes_version: "{{aksVersion}}"
+    linux_profile:
+      admin_username: "{{ ssh.userName }}"
+      ssh_key: "{{ lookup('file', '../../sshKeyPairs/id_rsa.pub') }}"
+    service_principal:
+      client_id: "{{ azureClientID }}"
+      client_secret: "{{ azureSecret }}"
+    agent_pool_profiles:
+      - name: default
+        count: "{{ nodeCount }}"
+        vm_size: "{{ nodeSize }}"
+    network_profile:
+      network_plugin: kubenet
+      network_policy: calico
+    tags:
+      Environment: IK8MPENV
+  register: aks
+
+- name: Get admin config of AKS
+  azure_rm_aks_facts:
+    resource_group: "rg{{ clusterName }}"
+    name: "{{ clusterName }}"
+    show_kubeconfig: admin
+  register: aks
+
+- name: Save the kubeconfig
+  copy:
+    content: "{{ aks.aks[0].kube_config }}"
+    dest: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"

@@ -1,0 +1,6 @@
+---
+- name: Install Grafana and integrate with prometheus
+  include_tasks: install_grafana.yml
+
+- name: Call API url with JSON having necessary arguments
+  include_tasks: call_api.yml

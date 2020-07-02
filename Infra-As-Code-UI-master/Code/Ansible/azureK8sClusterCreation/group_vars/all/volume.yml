@@ -1,0 +1,35 @@
+volumeJsonFile: volume_Details
+
+extraValuesRequiredVolume:
+  clusterName: "{{ clusterName}}"
+  callbackUrl: "{{ callbackUrl }}"
+  clusterID: "{{ clusterID }}"
+  stgclassName: "{{ stgclassName }}"
+  storageType: "{{ storageType }}"
+  reclaimPolicy: "{{ reclaimPolicy }}"
+  volExpansion: "{{ volExpansion }}"
+  redundancyType: "{{ redundancyType }}"
+
+extraVarsRequiredVolume:
+  - clusterName
+  - callbackUrl
+  - clusterID
+  - stgclassName
+  - storageType
+  - reclaimPolicy
+  - volExpansion
+  - redundancyType
+
+extraValuesRequiredAKSVolume:
+  stgclassName: "{{ stgclassName }}"
+  storageType: "{{ storageType }}"
+  reclaimPolicy: "{{ reclaimPolicy }}"
+  volExpansion: "{{ volExpansion }}"
+  redundancyType: "{{ redundancyType }}"
+
+extraVarsRequiredAKSVolume:
+  - stgclassName
+  - storageType
+  - reclaimPolicy
+  - volExpansion
+  - redundancyType

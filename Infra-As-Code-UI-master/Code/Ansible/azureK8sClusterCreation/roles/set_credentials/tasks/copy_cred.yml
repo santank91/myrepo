@@ -1,0 +1,9 @@
+---
+- name: Create a directory to store server Details
+  file: 
+    path: ~/.azure
+    state: directory
+- name: Copy Azure credentials
+  template:
+    src: credentials.j2
+    dest: "~/.azure/credentials"

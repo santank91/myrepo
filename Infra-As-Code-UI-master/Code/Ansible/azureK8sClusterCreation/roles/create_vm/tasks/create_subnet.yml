@@ -1,0 +1,14 @@
+---
+- name: Create a subnet
+  azure_rm_subnet:
+    resource_group: "rg{{ clusterName }}"
+    virtual_network_name: "vNet{{ clusterName }}"
+    name: "sNet{{ clusterName }}"
+    address_prefix_cidr: "{{ cidrAddressRange }}"
+  register: sn
+- debug:
+    var: sn
+- name: Validate Subnet creation
+  debug:
+    msg: "Subnet: sNet{{ clusterName }} is created successfully"
+  when: sn.state.provisioning_state == "Succeeded"

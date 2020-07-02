@@ -1,0 +1,13 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: devusr1-binding
+  namespace: dev
+subjects:
+  - kind: User
+    name: devusr1
+    apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: deployer
+  apiGroup: ""

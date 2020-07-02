@@ -1,0 +1,23 @@
+---
+- name: Print resource name
+  debug: var=item
+- name: Check if resource group exists
+  azure_rm_resourcegroup_info:
+    name: "{{ item }}"
+    list_resources: yes
+  register: rgStatus
+
+- name: Force delete resources and ResourceGroup
+  azure_rm_resourcegroup:
+    name: "{{ item }}"
+    state: absent
+    force_delete_nonempty: yes
+  when: (rgStatus.resourcegroups|length) != 0
+  register: rg
+  async: 1800
+  poll: 0
+
+- name: Store Job ID 
+  set_fact:
+    jobID: "{{ jobID  + [ rg.ansible_job_id ] }}"
+  when: (rgStatus.resourcegroups|length) != 0

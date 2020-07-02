@@ -1,0 +1,7 @@
+---
+
+- name: Create a user for kubernetes 
+  include_tasks: user.yml
+
+- name: Install Kubernetes dependencies 
+  include_tasks: kubedependencies.yml

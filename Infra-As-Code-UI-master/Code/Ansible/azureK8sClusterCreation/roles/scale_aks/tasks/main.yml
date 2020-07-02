@@ -1,0 +1,47 @@
+---
+- name: Ansible check directory
+  stat:
+    path: "{{ outDir }}"
+  register: my_folder
+- name: Create the empty k8s_outfiles directory
+  file:
+    path: "{{ outDir }}"
+    state: directory
+  when: my_folder.stat.exists == false
+- name: Get details of Azure Container Services (AKS) cluster
+  azure_rm_aks_info:
+    name: "{{ clusterName }}"
+    resource_group: "rg{{ clusterName }}"
+  register: aksInfo
+- name: Set AKS variables
+  set_fact:
+    aksLocation: "{{ aksInfo.aks[0].location }}"
+    aksSize: "{{ aksInfo.aks[0].properties.agentPoolProfiles[0].vmSize }}"
+- name: Print AKS variables
+  debug: var=aksLocation
+- name: Print AKS variables
+  debug: var=aksSize  
+- name: Create a managed Azure Container Services (AKS) cluster
+  azure_rm_aks:
+    name: "{{ clusterName }}"
+    location: "{{ aksLocation }}"
+    resource_group: "rg{{ clusterName }}"
+    dns_prefix: "{{ clusterName }}"
+    enable_rbac: yes
+    kubernetes_version: "{{aksVersion}}"
+    linux_profile:
+      admin_username: "{{ ssh.userName }}"
+      ssh_key: "{{ lookup('file', '../../sshKeyPairs/id_rsa.pub') }}"
+    service_principal:
+      client_id: "{{ azureClientID }}"
+      client_secret: "{{ azureSecret }}"
+    agent_pool_profiles:
+      - name: default
+        count: "{{ nodeCount }}"
+        vm_size: "{{ aksSize }}"
+    network_profile:
+      network_plugin: kubenet
+      network_policy: calico
+    tags:
+      Environment: IK8MPENV
+  register: aks

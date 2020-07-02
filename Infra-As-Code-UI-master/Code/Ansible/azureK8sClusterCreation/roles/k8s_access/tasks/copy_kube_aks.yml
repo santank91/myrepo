@@ -1,0 +1,29 @@
+---
+- name: Convert kubeconfig file to JSON format
+  shell: kubectl config view -o json  --flatten
+  register: KubeConfigData_raw
+- name: set token value to variable
+  set_fact:
+    KubeConfigData: "{{ KubeConfigData_raw.stdout }}"
+- name: Convert kubeconfig to JSON format
+  set_fact:
+    kubeConfigJson: "{{ KubeConfigData | to_json }}"
+
+- name: Write cluster details to vault
+  hashivault_write:
+    mount_point: "pg"
+    secret: "{{ clusterID }}_keys"
+    data:
+      k8sAdminToken: "{{ tokenValue }}"
+      dashboardToken: "{{ kubeToken }}"
+      kubeConfig: "{{ kubeConfigJson }}"
+  when: kubeDashboard is defined and kubeDashboard == "KubernetesDashboard"
+
+- name: Write cluster details to vault
+  hashivault_write:
+    mount_point: "pg"
+    secret: "{{ clusterID }}_keys"
+    data:
+      k8sAdminToken: "{{ tokenValue }}"
+      kubeConfig: "{{ kubeConfigJson }}"
+  when: kubeDashboard is not defined or kubeDashboard != "KubernetesDashboard"

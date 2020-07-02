@@ -1,0 +1,14 @@
+---
+- name: Create a Virtual Network
+  azure_rm_virtualnetwork:
+    resource_group: "rg{{ clusterName }}"
+    name: "vNet{{ clusterName }}"
+    address_prefixes_cidr:
+      - "{{ cidrAddressRange }}"
+  register: vn
+- debug:
+    var: vn
+- name: Validate Virtual Network creation
+  debug:
+    msg: "Virtual Network: vNet{{ clusterName }} is created successfully"
+  when: vn.state.provisioning_state == "Succeeded"

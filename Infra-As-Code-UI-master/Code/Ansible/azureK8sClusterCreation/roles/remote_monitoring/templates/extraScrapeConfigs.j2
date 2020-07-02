@@ -1,0 +1,16 @@
+
+- job_name: 'federate-{{ remoteClusterName }}'
+  scrape_interval: 15s
+
+  honor_labels: true
+  metrics_path: '/federate'
+
+  params:
+    'match[]':
+      - '{job!=""}'
+
+  static_configs:
+    - targets:
+      - {{ prometheusIP }}
+      labels:
+        clusterID: {{ remoteClusterName }}

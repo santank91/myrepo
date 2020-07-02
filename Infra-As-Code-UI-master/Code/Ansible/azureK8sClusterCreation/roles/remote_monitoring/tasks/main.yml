@@ -1,0 +1,6 @@
+---
+- name: Enable remote monitoring
+  include_tasks: remote_monitoring.yml
+
+- name: Call API url with JSON having necessary arguments
+  include_tasks: call_api.yml

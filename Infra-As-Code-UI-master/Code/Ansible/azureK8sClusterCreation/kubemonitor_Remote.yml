@@ -1,0 +1,58 @@
+---
+- name: Validation to check if mandatory fields are passed as extra-vars
+  hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check required variables if defined
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when: item not in vars
+      with_items:
+        - "{{extraVarsRequiredRemote}}"
+    - name: Check if variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item.value|length) == 0
+      loop: "{{ lookup('dict', extraValuesRequiredRemote ) }}"
+
+- name: Fetch kubeconfig of remote cluster
+  hosts: localhost
+  vars:
+    clusterID: "{{ remoteClusterID }}"
+  roles:
+    - { role: fetch_kubeconfig, tags: fetch_kubeconfig }
+
+- name: Fetch kubeconfig of central cluster
+  hosts: localhost
+  vars:
+    clusterID: "{{ centralClusterID }}"
+  roles:
+    - { role: fetch_kubeconfig, tags: fetch_kubeconfig }
+
+- name: Install prometheus and get the external ip
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/{{ remoteClusterID }}-kubeconfig.json"
+  roles:
+    - { role: set_Prometheus, tags: prometheus }
+
+- name: Integrate remote cluster to central cluster for monitoring
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/{{ centralClusterID }}-kubeconfig.json"
+  roles:
+    - { role: remote_monitoring, tags: remote_monitoring }
+
+- name: Cleanup remote kubeconfig file
+  hosts: localhost
+  vars:
+    cleanupType: "kubeconfig"
+    clusterID: "{{ remoteClusterID }}"
+  roles:
+    - { role: cleanup, tags: cleanup }
+
+- name: Cleanup central kubeconfig file
+  hosts: localhost
+  vars:
+    cleanupType: "kubeconfig"
+    clusterID: "{{ centralClusterID }}"
+  roles:
+    - { role: cleanup, tags: cleanup }

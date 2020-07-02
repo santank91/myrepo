@@ -1,0 +1,6 @@
+---
+- name: Setting Kubernetes master, initializing cluster, setting up pod network etc.
+  include_tasks: initialize.yml
+
+- name: Fetching the token
+  include_tasks: tokenize.yml

@@ -1,0 +1,50 @@
+---
+- name: Run the equivalent of "apt-get update"
+  apt:
+    update_cache: yes
+
+- name: Installing Docker dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ ubuntuDockerPkgs }}"
+
+- name: add Docker apt-key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: add Dockers' APT repository
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu bionic stable
+    state: present
+
+- name: Installing Docker
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ ubuntuDockerInstall }}"
+
+- name: add Kubernetes apt-key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: add Kubernetes' APT repository
+  apt_repository:
+    repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+    filename: "kubernetes"
+
+- name: install kube packages
+  apt:
+    name: "{{ item }}"
+    state: present
+    force: yes
+  with_items: "{{ ubuntuKubePkgs }}"
+
+- name: Install additional packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ instPkgs | default([]) }}"

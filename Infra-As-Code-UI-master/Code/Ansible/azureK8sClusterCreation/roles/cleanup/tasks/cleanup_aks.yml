@@ -1,0 +1,6 @@
+---
+- name: Delete kubeconfig file if it exists
+  file:
+    path: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"
+    state: absent
+  ignore_errors: yes

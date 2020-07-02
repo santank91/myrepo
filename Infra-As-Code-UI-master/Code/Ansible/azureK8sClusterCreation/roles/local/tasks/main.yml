@@ -1,0 +1,33 @@
+---
+- name: Delete the .kube directory and its contents
+  file:
+    state: absent
+    path: "{{ outDir }}/.kube/"
+  ignore_errors: yes
+
+- name: Delete cluster details file if it exists
+  file:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.txt"
+    state: absent
+  ignore_errors: yes
+
+- name: Delete cluster details json file if it exists
+  file:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json"
+    state: absent
+  ignore_errors: yes
+
+- name: Create a directory to store the cluster details
+  file:
+    path: "{{ outDir }}"
+    state: directory
+
+- name: Create new empty cluster details file
+  file:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.txt"
+    state: touch
+
+- name: Create new empty cluster details json file
+  file:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json"
+    state: touch

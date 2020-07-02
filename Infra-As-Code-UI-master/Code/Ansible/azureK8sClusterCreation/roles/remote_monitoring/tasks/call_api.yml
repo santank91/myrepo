@@ -1,0 +1,57 @@
+---
+- name: Ansible check directory
+  stat:
+    path: "{{ outDir }}"
+  register: my_folder
+- name: Create the empty k8s_outfiles directory
+  file:
+    path: "{{ outDir }}"
+    state: directory
+  when: my_folder.stat.exists == false
+
+- name: Create the monitoring details JSON
+  set_fact:
+    MonitorDtls: ' { "clusterID": "{{remoteClusterID}}", "monitoringDetails": { "clusterName": "{{ remoteClusterName }}", "grafanaUrl": "http://{{ grafanaIP }}"  } }'
+- name: Check if file exists
+  stat:
+    path: "{{ outDir }}/{{ MonitorJsonFile }}_{{ remoteClusterName }}.json"
+  register: fileCheck
+- name: Delete monitoring details json file if it exists
+  file:
+    path: "{{ outDir }}/{{ MonitorJsonFile }}_{{ remoteClusterName }}.json"
+    state: absent
+  when: fileCheck.stat.exists == True
+- name: Create the Monitoring details json file
+  file:
+    path: "{{ outDir }}/{{ MonitorJsonFile }}_{{ remoteClusterName }}.json"
+    state: touch
+- name: Adding monitoring details in monitoring details json file
+  lineinfile:
+    path: "{{ outDir }}/{{ MonitorJsonFile }}_{{ remoteClusterName }}.json"
+    line: "{{ MonitorDtls }}"
+  delegate_to: localhost
+
+- name: Check the status of callback API
+  uri:
+    url: "{{ callbackUrl }}"
+    timeout: 5
+  register: apiStatus
+  ignore_errors: yes
+
+- name: Call api using uri module
+  uri:
+    url: "{{ callbackUrl }}"
+    body: "{{ lookup('file', '{{ outDir }}/{{ MonitorJsonFile }}_{{ remoteClusterName }}.json' ) }}"
+    method: POST
+    body_format: json
+  when: callbackUrl is defined and apiStatus.status != -1
+  register: apiCall
+
+- name: Print response from API call
+  debug: var=apiCall
+  when: apiStatus.status != -1
+
+- name: Print message if callback API is down
+  debug:
+    msg: "The URL: {{ callbackUrl }} is down."
+  when: apiStatus.status == -1

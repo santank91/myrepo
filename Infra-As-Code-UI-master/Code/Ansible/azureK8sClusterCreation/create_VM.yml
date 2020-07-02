@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check required variables if defined
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when: item not in vars
+      with_items: 
+        - "{{extraVarsRequiredNative}}"
+    - name: Check if variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item.value|length) == 0
+      loop: "{{ lookup('dict', extraValuesRequiredNative ) }}"
+
+- name: Configure Azure details
+  hosts: localhost
+  vars:
+    saveAZdetails: "YES"
+  roles:
+    - set_credentials
+- name: Create Resource group
+  hosts: localhost
+  roles:
+    - create_rg
+- name: Set up Virtual Machines in Azure
+  hosts: localhost
+  roles:
+    - create_vm

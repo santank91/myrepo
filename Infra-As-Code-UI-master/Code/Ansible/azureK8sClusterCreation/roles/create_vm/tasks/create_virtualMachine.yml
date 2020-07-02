@@ -1,0 +1,32 @@
+---
+- name: Create Virtual Machines
+  vars:
+    contents: "{{ lookup('file', '../../sshKeyPairs/id_rsa.pub') }}"
+  azure_rm_virtualmachine:
+    resource_group: "rg{{ clusterName }}"
+    name: "{{ machineType }}{{ item }}{{ clusterName }}"
+    vm_size: "{{ vmSize }}"
+    virtual_network_name: "vNet{{ clusterName }}"
+    subnet_name: "sNet{{ clusterName }}"
+    ssh_password_enabled: false
+    open_ports: "{{ ports }}"
+    tags:
+      iK8MPClusterName: "{{ clusterName }}"
+      iK8MPNodeType: "{{ clusterName }}-{{ type }}"
+      iK8MPNodeName: "{{ clusterName }}-{{ type }}{{ item }}"
+      nodeName: "{{ type }}{{ item }}"
+      nodeType: "{{ type }}"
+      status: "{{tagValueList[(item|int)-1]}}"
+    admin_username: "{{ ssh.userName }}"
+    ssh_public_keys:
+      - path: "/home/{{ ssh.userName }}/.ssh/authorized_keys"
+        key_data: "{{ contents }}"
+    image:
+      offer: "{{ os[osType].offer }}"
+      publisher: "{{ os[osType].publisher }}"
+      sku: "{{ os[osType].sku }}"
+      version: "{{ os[osType].version }}"
+  register: vm
+  with_sequence: start={{ startCount|int }} end={{ endCount|int }}
+  async: 600
+  poll: 0

@@ -1,0 +1,12 @@
+---
+- name: Create resource group
+  azure_rm_resourcegroup:
+    name: "rg{{ clusterName }}"
+    location: "{{ availZone }}"
+  register: rg
+- debug:
+    var: rg
+- name: Validate resource group creation
+  debug:
+    msg: "Resource group: rg{{ clusterName }} is created successfully in region: {{ availZone }}"
+  when: rg.state.provisioning_state == "Succeeded"

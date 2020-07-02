@@ -1,0 +1,84 @@
+---
+- name: Validation to check if mandatory fields are passed as extra-vars
+  hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check if mandatory parameters are defined
+      fail:
+        msg: "Mandatory parameter {{item}} is not defined"
+      when: item not in vars
+      with_items:
+        - "{{ extraVarsRequired }}"
+    - name: Check if mandatory parameters if defined are having values
+      fail:
+        msg: "Mandatory parameter {{item.key}} is empty"
+      when: item.value is defined and (item.value|length) == 0
+      loop: "{{ lookup('dict', MandatoryVars ) }}"
+    - name: Check if optional parameters if defined are having values
+      fail:
+        msg: "Optional parameter {{item.key}} is defined but it is empty"
+      when: item.value is defined and (item.value|length) == 0
+      loop: "{{ lookup('dict', OptionalVars, wantlist=True ) }}"
+
+- name: Add master & node ips to hosts file and setup output file
+  hosts: localhost
+  connection: local
+  roles:
+    - { role: local, tags: local }
+
+- name: Create kube setup
+  hosts: kube_{{ clusterName }}_Master,kube_{{ clusterName }}_Worker
+  gather_facts: yes
+  become: yes
+  roles:
+    - {
+        role: common_centos,
+        tags: docker,
+        when: ansible_distribution == "CentOS",
+      }
+    - {
+        role: common_ubuntu,
+        tags: docker,
+        when: ansible_distribution == "Ubuntu",
+      }
+
+- name: Setup Kubernetes master
+  hosts: kube_{{ clusterName }}_Master
+  gather_facts: yes
+  become: yes
+  roles:
+    - { role: master, tags: master }
+
+- name: Setup Kubernetes worker
+  hosts: kube_{{ clusterName }}_Worker
+  gather_facts: yes
+  become: yes
+  roles:
+    - { role: node, tags: node }
+
+- name: Set up Kubernetes Dashboard in cluster
+  become: yes
+  become_user: "{{ kubeUser }}"
+  hosts: kube_{{ clusterName }}_Master
+  vars:
+    dashboardUrl: ""
+    kubeToken: ""
+  roles:
+    - {
+        role: kubernetes_dashboard_native,
+        when: kubeDashboard is defined and kubeDashboard == "KubernetesDashboard",
+      }
+
+- name: Fetch k8s cluster details, create service account, copy kubeconfig file and call api response url
+  hosts: kube_{{ clusterName }}_Master
+  vars:
+    clusterType: "Native"
+  roles:
+    - { role: k8s_access, tags: k8s_access }
+
+- name: Cleanup temporary files
+  hosts: localhost
+  vars:
+    cleanupType: "Native"
+  roles:
+    - { role: cleanup, tags: cleanup }

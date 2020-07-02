@@ -1,0 +1,7 @@
+---
+- name: Fetch azure credentials from vault
+  include_tasks: fetch_vault.yml
+
+- name: Copy azure credetials file to home
+  include_tasks: copy_cred.yml
+  when: saveAZdetails == "YES"

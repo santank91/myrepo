@@ -1,0 +1,13 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: devview-binding
+  namespace: dev
+subjects:
+  - kind: User
+    name: devview
+    apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: ""

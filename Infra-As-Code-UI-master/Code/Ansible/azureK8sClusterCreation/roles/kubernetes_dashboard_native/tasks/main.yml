@@ -1,0 +1,66 @@
+---
+- name: Initialize an empty string
+  set_fact:
+    portNumber: ""
+    kubeSecret: ""
+    kubeToken: ""
+    kubeTokenResp: {}
+    kubeSecretResp: {}
+    dashboardUrl: ""
+- name: Create certs directory
+  file:
+    path: "~/certs"
+    state: directory
+  ignore_errors: yes
+- name: Copy certificte and key file to master
+  copy:
+    src: "{{item.source}}"
+    dest: "{{item.dest}}"
+  with_items: "{{ copyCerts }}"
+- name: Create secret in specific namespace
+  command: "{{ item }}"
+  with_items:
+    - kubectl create namespace kubernetes-dashboard
+    - kubectl create secret generic kubernetes-dashboard-certs --from-file=/home/"{{ kubeUser }}"/certs -n kubernetes-dashboard
+  register: secretOuput
+- name: Print output
+  debug: var=secretOuput
+- name: Copy dashboard yaml file
+  copy:
+    src: "{{role_path}}/files/kubernetesDashboard.yml"
+    dest: "~/"
+- name: Apply the dashboard yaml file
+  command: kubectl apply -f ~/kubernetesDashboard.yml
+- name: Get NodePort of service
+  command: kubectl get services -n kubernetes-dashboard --field-selector metadata.name=kubernetes-dashboard
+  register: nodePortOutput
+- name: Filter port number
+  set_fact:
+    portNumber: "{{ nodePortOutput.stdout_lines[1] | regex_search('\\d{5}') }}"
+- name: Print dashboard URL
+  debug: msg="K8s dashboard URL- https://{{ kubeMasterIps[0] }}:{{ portNumber }}"
+- name: Set dashboard URL to variable
+  set_fact:
+    dashboardUrl: "https://{{ kubeMasterIps[0] }}:{{ portNumber }}"
+- name: Get secret name from service account
+  command: kubectl describe serviceaccount kubernetes-dashboard -n kubernetes-dashboard
+  register: secretName
+- name: Convert response list to dict
+  set_fact:
+    kubeSecretResp: "{{ kubeSecretResp|default({})| combine({item.split(':')[0] : item.split(':')[1]}) }}"
+  when: item != "" and (item | regex_search(':'))
+  loop: "{{ secretName.stdout_lines }}"
+- name: Filter secretName
+  set_fact:
+    kubeSecret: "{{ kubeSecretResp.Tokens | regex_replace(' ','') }}"
+- name: Get token from secretName
+  command: kubectl describe secret "{{ kubeSecret }}" -n kubernetes-dashboard
+  register: tokenValue
+- name: Convert response list to dict
+  set_fact:
+    kubeTokenResp: "{{ kubeTokenResp|default({})| combine({item.split(':')[0] : item.split(':')[1]}) }}"
+  when: item != "" and (item | regex_search(':'))
+  loop: "{{ tokenValue.stdout_lines }}"
+- name: Filter tokenValue
+  set_fact:
+    kubeToken: "{{ kubeTokenResp.token | regex_replace(' ','') }}"

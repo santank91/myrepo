@@ -1,0 +1,33 @@
+---
+- name: Validation to check if mandatory fields are passed as extra-vars
+  hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check required variables if defined
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when: item not in vars
+      with_items:
+        - "{{extraVarsRequiredVolume}}"
+    - name: Check if variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item.value|length) == 0
+      loop: "{{ lookup('dict', extraValuesRequiredVolume ) }}"
+
+- name: Fetch kubeconfig
+  hosts: localhost
+  roles:
+    - { role: fetch_kubeconfig, tags: fetch_kubeconfig }
+
+- name: Create Persistent Volume in cluster
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/{{ clusterID }}-kubeconfig.json"
+  roles:
+    - { role: create_persistentvolume, tags: persistent_volume }
+
+- name: Cleanup kubeconfig file
+  hosts: localhost
+  vars:
+    cleanupType: "kubeconfig"
+  roles:
+    - { role: cleanup, tags: cleanup }

@@ -1,0 +1,40 @@
+---
+- name: Validation to check if mandatory fields are passed as extra-vars
+  hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check required variables if defined
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when: item not in vars
+      with_items:
+        - "{{extraVarsRequiredGrafana}}"
+    - name: Check if variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item.value|length) == 0
+      loop: "{{ lookup('dict', extraValuesRequiredGrafana ) }}"
+
+- name: Fetch kubeconfig
+  hosts: localhost
+  roles:
+    - { role: fetch_kubeconfig, tags: fetch_kubeconfig }
+
+- name: Install prometheus
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/{{ clusterID }}-kubeconfig.json"
+  roles:
+    - { role: set_Prometheus, tags: prometheus }
+
+- name: Install Grafana, integrate with prometheus and call the api
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/{{ clusterID }}-kubeconfig.json"
+  roles:
+    - { role: set_Grafana, tags: grafana }
+
+- name: Cleanup kubeconfig file
+  hosts: localhost
+  vars:
+    cleanupType: "kubeconfig"
+  roles:
+    - { role: cleanup, tags: cleanup }

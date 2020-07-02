@@ -1,0 +1,40 @@
+## PERSISTENCE STORAGE CONFIGURATION
+persistence:
+  type: pvc
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: {{ grafanaPVCSize }}
+  finalizers:
+    - kubernetes.io/pvc-protection
+## Configure grafana datasources
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://{{ prometheusIP }}
+        access: proxy
+        isDefault: true
+##DASHBOARD IMPORT
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: "default"
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+dashboards:
+  default:
+    deployment-stats:
+      gnetId: {{ grafanaGnetid }}
+      revision: {{ grafanaRevision }}
+      datasource: Prometheus
+    ik8mp-dashboard:
+      json: |

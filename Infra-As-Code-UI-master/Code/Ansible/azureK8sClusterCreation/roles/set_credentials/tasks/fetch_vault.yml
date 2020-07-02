@@ -1,0 +1,12 @@
+---
+- name: Read secret from Vault
+  hashivault_read:
+    mount_point: "pg"
+    secret: '{{ credentialKey }}'
+  register: 'vault_read'
+- name: set credentials to respective variables
+  set_fact:
+    azureClientID: "{{ vault_read.value.clientID }}"
+    azureSecret: "{{ vault_read.value.secret }}"
+    azureSubscriptionID: "{{ vault_read.value.subscriptionID }}"
+    azureTenant: "{{ vault_read.value.tenant }}"

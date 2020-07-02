@@ -1,0 +1,12 @@
+{
+    "CLUSTER": {
+        "CLUSTER_CREATED": "Cluster created successfully",
+        "SOMETHING_WRONG": "Something went wrong!!",
+        "FIELD_MISSING": "Please enter valid inputs"
+    },
+    "SECURITY": {
+        "SECURITY_CREATED": "Security created successfully",
+        "SOMETHING_WRONG": "Something went wrong!!",
+        "FIELD_MISSING": "Please enter valid inputs"
+    }
+}

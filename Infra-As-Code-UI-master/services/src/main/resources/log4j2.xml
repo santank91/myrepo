@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+	<!-- <Root level="info">
+		<AppenderRef ref="ConsoleAppender" />
+		<AppenderRef ref="FileAppender" />
+	</Root> -->
+
+	<Properties>
+		<Property name="LOG_PATTERN">
+		[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n
+		</Property>
+	</Properties>
+	<Appenders>
+		<Console name="ConsoleAppender" target="SYSTEM_OUT"
+			follow="true">
+			<PatternLayout pattern="${LOG_PATTERN}" />
+		</Console>
+
+
+		<RollingFile name="FileAppender"
+			fileName="${sys:log.folder}/ik8smp-services.log"
+			filePattern="${sys:log.folder}/ik8smp-services-%d{yyyy-MM-dd}-%i.log">
+			<PatternLayout>
+				<Pattern>${LOG_PATTERN}</Pattern>
+			</PatternLayout>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="10MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+
+		<!-- <Console name="console" target="SYSTEM_OUT"> <PatternLayout pattern="[%-5level] 
+			%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n" /> </Console> -->
+	</Appenders>
+
+
+	<Loggers>
+		<Logger name="com.infosys.k8smp" level="debug"
+			additivity="false">
+			<AppenderRef ref="FileAppender" />
+		</Logger>
+		<Root level="info" additivity="false">
+			<appender-ref ref="FileAppender" />
+		</Root>
+
+	</Loggers>
+
+
+</Configuration>

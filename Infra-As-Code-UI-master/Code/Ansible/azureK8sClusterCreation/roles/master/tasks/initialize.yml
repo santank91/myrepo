@@ -1,0 +1,31 @@
+---
+- name: set single master ip to variable
+  set_fact:
+    single_mstr: "{{ item }}"
+  with_items: "{{ kubeMasterIps }}"
+
+- name: Initialize the cluster
+  shell: kubeadm init --pod-network-cidr={{podCidr}}  --apiserver-cert-extra-sans={{single_mstr}}
+
+- name: Create .kube directory
+  file:
+    path: /home/{{ kubeUser }}/.kube
+    state: directory
+    mode: 0755
+
+- name: Copy admin.conf to user's kube config
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ kubeUser }}/.kube/config
+    remote_src: yes
+    owner: "{{ kubeUser }}"
+
+- name: Install Pod network
+  become: yes
+  become_user: "{{ kubeUser }}"
+  shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+- name: Echo KUBECONFIG
+  shell: "echo $KUBECONFIG"
+  environment:
+    KUBECONFIG: /home/{{ kubeUser }}/.kube/config

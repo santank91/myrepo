@@ -1,0 +1,164 @@
+---
+#variables specific for vm creation
+cidrAddressRange: "172.16.1.0/24"
+masterPorts: "22,6443,30000-32767"
+nodePorts: "22,30000-32767"
+
+os:
+  "Centos":
+    offer: CentOS
+    publisher: OpenLogic
+    sku: "7.7"
+    version: latest
+  "Ubuntu":
+    offer: UbuntuServer
+    publisher: Canonical
+    sku: "18.04-LTS"
+    version: latest
+
+#variables specific for native cluster creation
+kubeUser: k8suser
+podCidr: 10.244.0.0/16
+
+ubuntuDockerPkgs:
+  - apt-transport-https=1.6.12ubuntu0.1
+  - ca-certificates=20180409
+  - curl=7.58.0-2ubuntu3.8
+  - gnupg-agent=2.2.4-1ubuntu1.2
+  - software-properties-common=0.96.24.32.12
+
+ubuntuDockerInstall:
+  - docker-ce=5:19.03.8~3-0~ubuntu-bionic
+  - docker-ce-cli=5:19.03.8~3-0~ubuntu-bionic
+  - containerd.io=1.2.13-1
+
+ubuntuKubePkgs:
+  - kubelet=1.18.2-00
+  - kubeadm=1.18.2-00
+  - kubectl=1.18.2-00
+
+centosDockerPkgs:
+  - firewalld-0.6.3
+  - yum-utils-1.1.31
+  - device-mapper-persistent-data-0.8.5
+  - lvm2-2.02.185
+
+centosDockerInstall:
+  - docker-ce-19.03.8
+  - docker-ce-cli-19.03.8
+  - containerd.io-1.2.13
+
+centosKubePackages:
+  - kubeadm-1.18.2
+  - kubectl-1.18.2
+
+centosServices:
+  - docker
+  - kubelet
+  - firewalld
+
+ports:
+  - "6443/tcp"
+  - "10250/tcp"
+  - "32024/tcp"
+  - "10251/tcp"
+  - "2379/tcp"
+  - "2380/tcp"
+  - "10252/tcp"
+
+copyCerts:
+  - {
+      source: "{{role_path}}/files/dashboard.crt",
+      dest: "~/certs/dashboard.crt",
+    }
+  - {
+      source: "{{role_path}}/files/dashboard.key",
+      dest: "~/certs/dashboard.key",
+    }
+
+#variables specific to aks set up
+aksVersion: "1.16.9"
+readonlyUser: readuser
+
+#common variables
+outDir: "{{ playbook_dir }}/k8s_outfiles"
+ssh:
+  userName: engdop
+service_account: adminpoc #duplicate adminUser in AKS
+jsonFile: Cluster_Details
+
+#variable pre-check declarations
+#vm creation set up
+extraValuesRequiredNative:
+  masterCount: "{{ masterCount}}"
+  nodeCount: "{{ nodeCount}}"
+  masterSize: "{{ masterSize}}"
+  nodeSize: "{{ nodeSize}}"
+  availZone: "{{ availZone}}"
+  clusterName: "{{ clusterName}}"
+  imageName: "{{ imageName}}"
+  credentialKey: "{{ credentialKey }}"
+  callbackUrl: "{{ callbackUrl }}"
+  clusterID: "{{ clusterID }}"
+
+extraVarsRequiredNative:
+  - masterCount
+  - nodeCount
+  - masterSize
+  - nodeSize
+  - availZone
+  - clusterName
+  - imageName
+  - credentialKey
+  - callbackUrl
+  - clusterID
+
+#native cluster set up
+extraVarsRequired:
+  - clusterID
+  - callbackUrl
+  - clusterName
+
+MandatoryVars:
+  clusterID: "{{ clusterID }}"
+  callbackUrl: "{{ callbackUrl }}"
+  clusterName: "{{ clusterName }}"
+
+OptionalVars:
+  kubeUser: "{{ kubeUser }}"
+
+#aks set up
+extraValuesRequiredAKS:
+  nodeCount: "{{ nodeCount}}"
+  clusterName: "{{ clusterName}}"
+  callbackUrl: "{{ callbackUrl }}"
+  clusterID: "{{ clusterID }}"
+  credentialKey: "{{ credentialKey }}"
+
+optionalExtraValuesRequiredAKS:
+  nodeSize: "{{ nodeSize}}"
+  availZone: "{{ availZone}}"
+
+extraVarsRequiredAKS:
+  - nodeCount
+  - clusterName
+  - credentialKey
+  - callbackUrl
+  - clusterID
+
+#deleting resource group
+extraValuesRequiredDelete:
+  resourceGroupName: "{{ resourceGroupName}}"
+  credentialKey: "{{ credentialKey }}"
+  callbackUrl: "{{ callbackUrl }}"
+  clusterID: "{{ clusterID }}"
+
+extraVarsRequiredDelete:
+  - resourceGroupName
+  - credentialKey
+  - callbackUrl
+  - clusterID
+
+extraVarsListDelete:
+  - resourceGroupName
+

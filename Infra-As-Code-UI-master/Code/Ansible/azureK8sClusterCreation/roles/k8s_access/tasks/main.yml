@@ -1,0 +1,23 @@
+---
+- name: Fetch k8s cluster details and write to a file
+  include_tasks: fetch_details.yml
+  when: clusterType == "Native"
+
+- name: Create service account and save token to a file
+  include_tasks: get_token_native.yml
+  when: clusterType == "Native"
+  
+- name: Create service account and save token to a file
+  include_tasks: get_token_aks.yml
+  when: clusterType == "AKS"
+
+- name: Fetch kubeconfig file and write data to vault
+  include_tasks: copy_kube_native.yml
+  when: clusterType == "Native"
+
+- name: Fetch kubeconfig file and write data to vault
+  include_tasks: copy_kube_aks.yml
+  when: clusterType == "AKS"
+
+- name: Call API url with JSON having necessary arguments
+  include_tasks: call_api.yml

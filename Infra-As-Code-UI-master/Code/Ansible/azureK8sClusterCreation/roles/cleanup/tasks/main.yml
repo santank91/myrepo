@@ -1,0 +1,12 @@
+---
+- name: Cleanup native cluster creation related files
+  include_tasks: cleanup_native.yml
+  when: cleanupType == "Native"
+
+- name: Cleanup AKS cluster creation related files
+  include_tasks: cleanup_aks.yml
+  when: cleanupType == "AKS"
+
+- name: Cleanup kubeconfig file
+  include_tasks: cleanup_kube.yml
+  when: cleanupType == "kubeconfig"

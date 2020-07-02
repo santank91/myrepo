@@ -1,0 +1,19 @@
+---
+- name: Fetching cluster details after checking node health every 3 seconds
+  become: yes
+  become_user: "{{ kubeUser }}"
+  shell: |
+    health_check=""
+    timeout 120s bash -c -- 'while [ "$health_check" != "Ready" ]; do health_check=`kubectl get nodes -o wide | tail -n +2 | tr -s " " |  cut -d " " -f2 | sort -u`; sleep 3; done'
+    kubectl get nodes -o wide
+  register: cluster_details_raw
+
+- name: set cluster details to variable
+  set_fact:
+    clstr_dtls: "{{ cluster_details_raw.stdout_lines }}"
+
+- name: Write cluster details to Cluster_Details.txt file
+  local_action: "copy content='{{ clstr_dtls|join('\n') }} ' dest={{ outDir }}/{{ jsonFile }}_{{ clusterName }}.txt"
+
+- name: print cluster details
+  debug: msg="{{clstr_dtls}}"

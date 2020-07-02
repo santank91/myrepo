@@ -1,0 +1,128 @@
+---
+- name: Validation to check if mandatory fields are passed as extra-vars
+  hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Check required variables if defined
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when: item not in vars
+      with_items:
+        - "{{extraVarsRequiredAKS}}"
+    - name: Check if variables has value
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when: (item.value|length) == 0
+      loop: "{{ lookup('dict', extraValuesRequiredAKS ) }}"
+    - name: Initialize persitentVolume variable if it is not defined
+      set_fact:
+        persistentVolume: ""
+      when:
+        - persistentVolume is not defined
+    - name: Check required variables for persitent volume is defined if required
+      fail: msg="Mandatory Variable '{{ item }}' is not defined"
+      when:
+        - (persistentVolume == "true") and (item not in vars)
+      with_items:
+        - "{{extraVarsRequiredAKSVolume}}"
+    - name: Check if variables has value for persitent volume if required
+      fail: msg="Variable \'{{item.key}}\' is empty or not defined"
+      when:
+        - (persistentVolume == "true") and ((item.value|length) == 0)
+      loop: "{{ lookup('dict', extraValuesRequiredAKSVolume ) }}"
+
+- name: Configure Azure details
+  hosts: localhost
+  vars:
+    saveAZdetails: "NO"
+  roles:
+    - { role: set_credentials, tags: azconfig }
+
+- name: Create Resource group
+  hosts: localhost
+  environment:
+    AZURE_SUBSCRIPTION_ID: "{{ azureSubscriptionID }}"
+    AZURE_CLIENT_ID: "{{ azureClientID }}"
+    AZURE_SECRET: "{{ azureSecret }}"
+    AZURE_TENANT: "{{ azureTenant }}"
+  roles:
+    - { role: create_rg }
+
+- name: Create AKS cluster
+  hosts: localhost
+  environment:
+    AZURE_SUBSCRIPTION_ID: "{{ azureSubscriptionID }}"
+    AZURE_CLIENT_ID: "{{ azureClientID }}"
+    AZURE_SECRET: "{{ azureSecret }}"
+    AZURE_TENANT: "{{ azureTenant }}"
+  roles:
+    - { role: create_aks, tags: akscreate }
+
+- name: Set up Kubernetes Dashboard in cluster
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"
+  roles:
+    - {
+        role: kubernetes_dashboard_aks,
+        when: kubeDashboard is defined and kubeDashboard == "KubernetesDashboard",
+        tags: kubeDash,
+      }
+
+- name: Create admin service account, fetch master url and call api response url
+  hosts: localhost
+  vars:
+    clusterType: "AKS"
+  environment:
+    KUBECONFIG: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"
+  roles:
+    - { role: k8s_access, tags: k8s_access }
+
+- name: Install prometheus
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"
+  roles:
+    - {
+        role: set_Prometheus,
+        when: kubeMonitoring is defined and kubeMonitoring == "Grafana",
+        tags: prometheus,
+      }
+
+- name: Install Grafana, integrate with prometheus and call the api
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"
+  roles:
+    - {
+        role: set_Grafana,
+        when: kubeMonitoring is defined and kubeMonitoring == "Grafana",
+        tags: grafana,
+      }
+
+- name: Create Persistent Volume in cluster
+  hosts: localhost
+  environment:
+    KUBECONFIG: "{{ outDir }}/aks-{{ clusterName }}-kubeconfig"
+  roles:
+    - {
+        role: create_persistentvolume,
+        tags: persistent_volume,
+        when: persistentVolume is defined and persistentVolume == "true",
+      }
+
+- name: Scale AKS cluster
+  hosts: localhost
+  environment:
+    AZURE_SUBSCRIPTION_ID: "{{ azureSubscriptionID }}"
+    AZURE_CLIENT_ID: "{{ azureClientID }}"
+    AZURE_SECRET: "{{ azureSecret }}"
+    AZURE_TENANT: "{{ azureTenant }}"
+  roles:
+    - { role: scale_aks }
+  tags: never, aksscale
+
+- name: Cleanup temporary files
+  hosts: localhost
+  vars:
+    cleanupType: "AKS"
+  roles:
+    - { role: cleanup, tags: cleanup }

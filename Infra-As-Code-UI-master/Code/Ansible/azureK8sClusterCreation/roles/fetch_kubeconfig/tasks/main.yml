@@ -1,0 +1,14 @@
+---
+- name: Read kubeconfig from Vault
+  hashivault_read:
+    mount_point: "pg"
+    secret: "{{ clusterID }}_keys"
+    key: "kubeConfig"
+  register: "kubeConfig_raw"
+- name: set kubeconfig data to a variable
+  set_fact:
+    kubeConfigOut: "{{ kubeConfig_raw.value }}"
+- name: Copy the kubeconfig to outfiles
+  copy:
+    content: "{{ kubeConfigOut }}"
+    dest: "{{ outDir }}/{{ clusterID }}-kubeconfig.json"

@@ -1,0 +1,49 @@
+---
+- name: Ansible check directory
+  stat:
+    path: "{{role_path}}/files"
+  register: my_folder
+- name: Create the empty files directory
+  file:
+    path: "{{role_path}}/files"
+    state: directory
+  when: my_folder.stat.exists == false
+
+- name: Copy extraScrapeConfigs file for prometheus
+  template:
+    src: extraScrapeConfigs.j2
+    dest: "{{role_path}}/files/extraScrapeConfigs-{{remoteClusterName}}.yaml"
+- name: Append extraScrapeConfigs file to existing file
+  shell: cat "{{role_path}}/files/extraScrapeConfigs-{{remoteClusterName}}.yaml" >> "{{role_path}}/files/extraScrapeConfigs-{{centralClusterName}}.yaml"
+
+- name: Upgrade Prometheus with new extraScrapeConfig job
+  shell: helm upgrade prometheus stable/prometheus --namespace monitoring --set-file extraScrapeConfigs="{{role_path}}/files/extraScrapeConfigs-{{centralClusterName}}.yaml" --set server.service.type=LoadBalancer
+  register: prometheusUpgradeLog
+- name: Print Promethus upgrade value
+  debug: var=prometheusUpgradeLog
+
+- name: Fetch grafana ip address
+  shell: |
+    kubectl get services -n monitoring --field-selector metadata.name=grafana | tail -n +2 | tr -s " " |  cut -d " " -f4
+  register: grafanaIP_raw
+- name: set Grafana ip value to a variable
+  set_fact:
+    grafanaIP: "{{ grafanaIP_raw.stdout_lines[0] }}"
+- name: Print grafanaIP value
+  debug: var=grafanaIP
+
+- name: Fetching Grafana password
+  shell: |
+    kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+  register: grafanaPassword_raw
+- name: set grafanaPassword value to a variable
+  set_fact:
+    grafanaPassword: "{{ grafanaPassword_raw.stdout_lines[0] }}"
+
+- name: Write cluster details to vault
+  hashivault_write:
+    mount_point: "pg"
+    secret: "{{ remoteClusterID }}_grafanaKey"
+    data:
+      grafanaUser: "admin"
+      grafanaPassword: "{{ grafanaPassword }}"

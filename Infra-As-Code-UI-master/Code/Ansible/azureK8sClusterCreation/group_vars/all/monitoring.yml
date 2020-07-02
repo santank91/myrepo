@@ -1,0 +1,37 @@
+#grafana set up
+MonitorJsonFile: Monitoring_Details
+
+grafanaChartVersion: 5.0.23
+grafanaGnetid: 10000
+grafanaRevision: 1
+grafanaPVCSize: 10Gi
+
+extraValuesRequiredGrafana:
+  clusterName: "{{ clusterName}}"
+  callbackUrl: "{{ callbackUrl }}"
+  clusterID: "{{ clusterID }}"
+
+extraVarsRequiredGrafana:
+  - clusterName
+  - callbackUrl
+  - clusterID
+
+#remote monitoring set up
+
+extraValuesRequiredRemote:
+  callbackUrl: "{{ callbackUrl }}"
+  centralClusterName: "{{ centralClusterName}}"
+  centralClusterID: "{{ centralClusterID }}"
+  remoteClusterName: "{{ remoteClusterName}}"
+  remoteClusterID: "{{ remoteClusterID }}"
+
+extraVarsRequiredRemote:
+  - callbackUrl
+  - centralClusterName
+  - centralClusterID
+  - remoteClusterName
+  - remoteClusterID
+
+clusterIDList:
+  - "{{ centralClusterID }}"
+  - "{{ remoteClusterID }}"

@@ -1,0 +1,7 @@
+---
+- name: creation of persistent volume
+  include_tasks: volume_creation.yml
+ 
+- name: Call API url with JSON having necessary arguments
+  include_tasks: call_api.yml
+

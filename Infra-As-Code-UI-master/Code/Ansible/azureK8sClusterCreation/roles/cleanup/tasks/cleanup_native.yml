@@ -1,0 +1,12 @@
+---
+- name: Delete azure credentials file if it exists
+  file:
+    path: "~/.azure/credentials"
+    state: absent
+  ignore_errors: yes
+
+- name: Delete the .kube directory and its contents
+  file:
+    state: absent
+    path: "{{ outDir }}/.kube/"
+  ignore_errors: yes

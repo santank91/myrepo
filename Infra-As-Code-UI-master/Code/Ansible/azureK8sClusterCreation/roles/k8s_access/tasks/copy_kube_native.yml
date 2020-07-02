@@ -1,0 +1,49 @@
+---
+- name: Store config file into {{ outDir }}/.kube directoy
+  become: yes
+  become_user: "{{ kubeUser }}"
+  fetch:
+    src: /home/{{ kubeUser }}/.kube/config
+    dest: "{{ outDir }}/.kube/"
+    flat: yes
+
+- name: set single master ip to variable
+  set_fact:
+    single_mstr: "{{ item }}"
+  with_items: "{{ kubeMasterIps }}"
+
+- name: Replace private ip in config file with public ip and convert to JSON format
+  shell: |
+    old_ip=`grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' {{ outDir }}/.kube/config`
+    new_ip={{ single_mstr }}
+    sed -ie s/$old_ip/$new_ip/g {{ outDir }}/.kube/config
+    kubectl config view -o json --flatten --kubeconfig={{ outDir }}/.kube/config
+  delegate_to: localhost
+  register: KubeConfigData_raw
+- name: set kubeconfig JSON data to variable
+  set_fact:
+    KubeConfigData: "{{ KubeConfigData_raw.stdout }}"
+- name: Convert kubeconfig to JSON format
+  set_fact:
+    kubeConfigJson: "{{ KubeConfigData | to_json }}"
+
+- name: Write cluster details to vault
+  hashivault_write:
+    mount_point: "pg"
+    secret: "{{ clusterID }}_keys"
+    data:
+      k8sAdminToken: "{{ tokenValue }}"
+      dashboardToken: "{{ kubeToken }}"
+      kubeConfig: "{{ kubeConfigJson }}"
+  when: kubeDashboard is defined and kubeDashboard == "KubernetesDashboard"
+  delegate_to: localhost
+
+- name: Write cluster details to vault
+  hashivault_write:
+    mount_point: "pg"
+    secret: "{{ clusterID }}_keys"
+    data:
+      k8sAdminToken: "{{ tokenValue }}"
+      kubeConfig: "{{ kubeConfigJson }}"
+  when: kubeDashboard is not defined or kubeDashboard != "KubernetesDashboard"
+  delegate_to: localhost

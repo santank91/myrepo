@@ -1,0 +1,25 @@
+---
+- name: Update kube-system namespace with label
+  command: kubectl label namespace kube-system networking/namespace={{clusterName }}-kube-system
+
+- name: Fetching ClusterName
+  shell: |
+    kubectl cluster-info | head -1 | tr -s " " |  cut -d " " -f6 | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g"
+  register: k8sClusterName_raw
+- name: set ClusterName value to a variable
+  set_fact:
+    kubeApiServerUrl: "{{ k8sClusterName_raw.stdout_lines[0] }}"
+- name: Print ClusterName value
+  debug: var=kubeApiServerUrl
+
+- name: Creating admin service account and fetching token for admin access
+  shell: |
+    kubectl create serviceaccount {{service_account}}
+    kubectl create clusterrolebinding {{service_account}}-binding --clusterrole=cluster-admin --serviceaccount=default:{{service_account}}
+    TokenName=`kubectl get serviceaccount/{{service_account}} -o jsonpath='{.secrets[0].name}'`
+    Token=$(kubectl get secret $TokenName -o=jsonpath="{.data.token}" | base64 -d -i -)
+    echo $Token
+  register: tokenValue_raw
+- name: set token value to variable
+  set_fact:
+    tokenValue: "{{ tokenValue_raw.stdout_lines[2] }}"

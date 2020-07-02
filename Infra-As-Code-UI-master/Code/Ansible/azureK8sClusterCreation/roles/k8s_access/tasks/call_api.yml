@@ -1,0 +1,59 @@
+---
+- name: Create the cluster_dtls JSON
+  set_fact:
+    clusterDtls: ' { "clusterID": "{{clusterID}}", "createClusterDetails": { "kubeApiServerUrl": "{{ kubeApiServerUrl }}",  "k8sDashboadUrl": "{{ dashboardUrl }}" } }'
+  when: kubeDashboard is defined and kubeDashboard == "KubernetesDashboard"
+
+- name: Create the cluster_dtls JSON
+  set_fact:
+    clusterDtls: ' { "clusterID": "{{clusterID}}", "createClusterDetails": { "kubeApiServerUrl": "{{ kubeApiServerUrl }}", "k8sDashboadUrl": ""  } }'
+  when: kubeDashboard is not defined or kubeDashboard != "KubernetesDashboard"
+
+- name: Check if file exists
+  stat:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json"
+  register: fileCheck
+  delegate_to: localhost
+- name: Delete cluster details json file if it exists
+  file:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json"
+    state: absent
+  when: fileCheck.stat.exists == True
+  delegate_to: localhost
+- name: Create the cluster details json file
+  file:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json"
+    state: touch
+  delegate_to: localhost
+- name: Adding cluster details in cluster_dtls.json file
+  lineinfile:
+    path: "{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json"
+    line: "{{ clusterDtls }}"
+  delegate_to: localhost
+
+- name: Check the status of callback API
+  uri:
+    url: "{{ callbackUrl }}"
+    timeout: 5
+  register: apiStatus
+  ignore_errors: yes
+  delegate_to: localhost
+
+- name: Call api using uri module
+  uri:
+    url: "{{ callbackUrl }}"
+    body: "{{ lookup('file', '{{ outDir }}/{{ jsonFile }}_{{ clusterName }}.json' ) }}"
+    method: POST
+    body_format: json
+  when: callbackUrl is defined and apiStatus.status != -1
+  register: apiCall
+  delegate_to: localhost
+
+- name: Print response from API call
+  debug: var=apiCall
+  when: apiStatus.status != -1
+
+- name: Print message if callback API is down
+  debug:
+    msg: "The URL: {{ callbackUrl }} is down."
+  when: apiStatus.status == -1

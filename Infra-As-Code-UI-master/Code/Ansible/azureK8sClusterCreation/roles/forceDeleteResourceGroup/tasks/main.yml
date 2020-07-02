@@ -1,0 +1,17 @@
+---
+- name: Intialize variables
+  set_fact:
+    jobID: []
+- name: Delete Resource Groups  
+  include_tasks: deleteResourceGroup.yml
+  loop: "{{  resourceGroupName }}"
+
+- name: Wait for asynchronous job to end
+  async_status:
+    jid: '{{ item }}'
+  loop: "{{ jobID }}"
+  when: (rgStatus.resourcegroups|length) != 0
+  register: job_result
+  until: job_result.finished
+  retries: 400
+  delay: 5

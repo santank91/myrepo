@@ -1,0 +1,64 @@
+---
+- name: Ansible check directory
+  stat:
+    path: "{{ outDir }}"
+  register: my_folder
+  
+- name: Create the empty k8s_outfiles directory
+  file:
+    path: "{{ outDir }}"
+    state: directory
+  when: my_folder.stat.exists == false
+  
+- name: Create the volume details JSON
+  set_fact:
+    volumeDtls: ' { "clusterID": "{{clusterID}}", "volumeDetails": { "clusterName": "{{ clusterName }}", "stgclassName": "{{ stgclassName }}", "storageType": "{{ storageType }}"  } }'
+    
+- name: Check if file exists
+  stat:
+    path: "{{ outDir }}/{{ volumeJsonFile }}_{{ clusterName }}.json"
+  register: fileCheck
+  
+- name: Delete volume details json file if it exists
+  file:
+    path: "{{ outDir }}/{{ volumeJsonFile }}_{{ clusterName }}.json"
+    state: absent
+  when: fileCheck.stat.exists == True
+  
+- name: Create the volume details json file
+  file:
+    path: "{{ outDir }}/{{ volumeJsonFile }}_{{ clusterName }}.json"
+    state: touch
+    
+- name: Adding volume details in volume details json file
+  lineinfile:
+    path: "{{ outDir }}/{{ volumeJsonFile }}_{{ clusterName }}.json"
+    line: "{{ volumeDtls }}"
+  delegate_to: localhost
+  
+- name: Check the status of callback API
+  uri:
+    url: "{{ callbackUrl }}"
+    timeout: 5
+  register: apiStatus
+  ignore_errors: yes
+
+- name: Call api using uri module
+  uri:
+    url: "{{ callbackUrl }}"
+    body: "{{ lookup('file', '{{ outDir }}/{{ volumeJsonFile }}_{{ clusterName }}.json' ) }}"
+    method: POST
+    body_format: json
+  when: callbackUrl is defined and apiStatus.status != -1
+  register: apiCall
+
+- name: Print response from API call
+  debug: var=apiCall
+  when: apiStatus.status != -1
+
+- name: Print message if callback API is down
+  debug:
+    msg: "The URL: {{ callbackUrl }} is down."
+  when: apiStatus.status == -1
+
+

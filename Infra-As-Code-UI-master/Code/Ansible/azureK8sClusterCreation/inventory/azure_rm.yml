@@ -1,0 +1,8 @@
+plugin: azure_rm
+keyed_groups:
+  - prefix: kube
+    key: tags.iK8MPNodeType | default('none')
+auth_source: credential_file
+plain_host_names: yes
+hostvar_expressions:
+  kubeMasterIps: public_ipv4_addresses

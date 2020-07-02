@@ -1,0 +1,22 @@
+---
+- name: Install Prometheus with custom values
+  shell: |
+    kubectl create namespace monitoring
+    helm install prometheus stable/prometheus --namespace monitoring --set server.service.type=LoadBalancer
+  register: prometheusInstallLog
+- name: Print Promethus installation value
+  debug: var=prometheusInstallLog
+
+- name: Fetch prometheus-server ip address
+  shell: |
+    kubectl get services -n monitoring --field-selector metadata.name=prometheus-server | tail -n +2 | tr -s " " |  cut -d " " -f4
+  register: prometheusIP_raw
+  until: prometheusIP_raw.stdout_lines[0] is regex("^(?=\d+\.\d+\.\d+\.\d+$)")
+  retries: 50
+  delay: 10
+  ignore_errors: yes
+- name: set prometheus-server ip value to a variable
+  set_fact:
+    prometheusIP: "{{ prometheusIP_raw.stdout_lines[0] }}"
+- name: Print prometheusIP value
+  debug: var=prometheusIP
