@@ -29,5 +29,5 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: buildnode-artifact
-        path: UI
+        path: Infra-As-Code-UI-master/UI
 
