@@ -24,7 +24,7 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: npm install --prefix ./UI
+    - run: npm install --prefix ./Infra-As-Code-UI-master/UI
     
     - uses: actions/upload-artifact@v2
       with:
